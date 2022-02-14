@@ -1,0 +1,106 @@
+DELIMITER //
+
+CREATE PROCEDURE votesconstraint(IN input_biden INT, IN input_trump INT, IN input_totalvotes INT, OUT output_boolean BOOLEAN)
+BEGIN
+        DECLARE output BOOLEAN;
+        
+        SELECT result
+        INTO output
+        FROM
+        (Select true as result
+		From votes
+		WHERE NOT EXISTS (SELECT precinct FROM votes WHERE (input_trump + input_biden) > input_totalvotes)
+
+		Union
+
+		Select false as result
+		From votes
+		WHERE EXISTS (SELECT precinct FROM votes WHERE (input_trump + input_biden) > input_totalvotes))x;
+        
+        SET output_boolean = output;
+        
+END//
+DELIMITER ;
+
+CALL votesconstraint(10, 10, 10, @output);
+SELECT @output;
+
+-------------------------------------------------------------------------------------------------------------------------------
+DELIMITER //
+
+CREATE PROCEDURE dayconstraint(IN input_timestamp DATETIME, OUT output_boolean BOOLEAN)
+BEGIN
+        DECLARE output BOOLEAN;
+        
+        SELECT result
+        INTO output
+        FROM(
+        Select true as result
+		From votes
+		WHERE NOT EXISTS (SELECT timestamp FROM votes WHERE DAY(input_timestamp) > 11 or DAY(input_timestamp) < 3)
+
+		Union
+
+		Select false as result
+		From votes
+		WHERE EXISTS (SELECT timestamp FROM votes WHERE DAY(input_timestamp) > 11 or DAY(input_timestamp) < 3))x;
+
+        
+        SET output_boolean = output;
+        
+END//
+DELIMITER ;
+-------------------------------------------------------------------------------------------------------------------------------
+DELIMITER //
+
+CREATE PROCEDURE timestampconstraint(IN input_timestamp DATETIME, IN input_biden INT, IN input_trump INT, IN input_totalvotes INT, IN input_precinct VARCHAR(255), OUT output_boolean BOOLEAN)
+BEGIN
+        DECLARE output BOOLEAN;
+        
+        IF input_timestamp > '2020-11-05 00:00:00' THEN
+			SELECT result
+			INTO output
+			FROM(
+			Select true as result
+			From votes
+			WHERE NOT EXISTS (SELECT precinct FROM votes x, (SELECT biden, trump, totalvotes FROM votes WHERE timestamp = '2020-11-05 00:00:00')y WHERE precinct = input_precinct AND timestamp = input_timestamp
+			AND (y.biden > x.biden OR y.trump > x.trump OR y.totalvotes > x.totalvotes))
+
+			Union
+
+			Select false as result
+			From votes
+			WHERE EXISTS (SELECT precinct FROM votes x, (SELECT biden, trump, totalvotes FROM votes WHERE timestamp = '2020-11-05 00:00:00')y WHERE precinct = input_precinct AND timestamp = input_timestamp
+			AND (y.biden > x.biden OR y.trump > x.trump OR y.totalvotes > x.totalvotes)))x;
+        
+        ELSEIF input_timestamp = '2020-11-05 00:00:00' THEN
+			SELECT result
+			INTO output
+			FROM(
+			Select true as result
+			From votes
+			WHERE NOT EXISTS (SELECT precinct FROM votes x, (SELECT biden, trump, totalvotes FROM votes WHERE timestamp > '2020-11-05 00:00:00')y WHERE precinct = input_precinct AND timestamp = input_timestamp
+			AND (input_biden > y.biden OR input_trump > y.trump OR input_totalvotes > y.totalvotes))
+
+			Union
+
+			Select false as result
+			From votes
+			WHERE EXISTS (SELECT precinct FROM votes x, (SELECT biden, trump, totalvotes FROM votes WHERE timestamp > '2020-11-05 00:00:00')y WHERE precinct = input_precinct AND timestamp = input_timestamp
+			AND (input_biden > y.biden OR input_trump > y.trump OR input_totalvotes > y.totalvotes)))x;
+        
+        ELSE
+			SELECT true
+            INTO output;
+		END IF;
+		
+        SET output_boolean = output;
+
+END//
+DELIMITER ;
+
+        
+        SET output_boolean = output;
+        
+END//
+DELIMITER ;
